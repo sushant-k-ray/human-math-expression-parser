@@ -1,4 +1,5 @@
 #include "expression_parser.h"
+#include <execution>
 #include <tuple>
 #include <ctype.h>
 
@@ -18,7 +19,7 @@ void _Impl__::tokenise(std::string_view string, std::vector<token>& tokens)
             return;
 
         int shiftDecimals = 0;
-        double number;
+        double number = 0;
 
         for(; beg < end; beg += 1){
             auto ch = string[beg];
@@ -54,6 +55,20 @@ void _Impl__::tokenise(std::string_view string, std::vector<token>& tokens)
     //tuple of operatorIndex, startLocation, and endLocation
     std::vector<std::tuple<int, int, int>> posOperators;
 
+    auto caseInsensitiveSearch = [&](std::string_view search, int index){
+        auto iter = std::search(std::execution::seq
+                               ,string.cbegin() + index, string.cend()
+                               ,search.cbegin(), search.cend()
+                               ,[](auto c1, auto c2)
+                                {return std::toupper(c1) == std::toupper(c2);}
+                    );
+
+        if(iter == string.cend())
+            return -1;
+
+        return static_cast<int>(iter - string.cbegin());
+    };
+
     //add operators to posOperators
     //ignore unary + and unary -
     for(int i = 2; i < operators.size(); i++)
@@ -62,19 +77,20 @@ void _Impl__::tokenise(std::string_view string, std::vector<token>& tokens)
         auto size = _operator.symbol.size();
         int index = 0;
 
-        while((index = string.find(_operator.symbol, index)) != -1){
+        while((index = caseInsensitiveSearch(_operator.symbol, index)) != -1){
             posOperators.push_back(std::make_tuple(i, index, index + size));
             index += size;
         }
     }
 
     //remove ambiguities
-    std::sort(posOperators.begin(), posOperators.end(), [](auto i, auto j){
-        if(std::get<1>(i) == std::get<1>(j))
-            return std::get<2>(i) < std::get<2>(j);
+    std::sort(std::execution::seq, posOperators.begin(), posOperators.end(),
+             [](auto i, auto j){
+                if(std::get<1>(i) == std::get<1>(j))
+                    return std::get<2>(i) < std::get<2>(j);
 
-        return std::get<1>(i) < std::get<1>(j);
-    });
+                return std::get<1>(i) < std::get<1>(j);
+             });
 
     for(int i = posOperators.size() - 1; i > 0; i--)
     {
@@ -176,7 +192,10 @@ double expressionParser::solve(std::string_view string)
         if(front.operatorIndex == findOperator("("))
             parenthesisDepth = 1;
 
-        addOperator(front.operatorIndex);
+        if(front.isConstant())
+            numberStack.push_back(front.getOperator().execute(0,0));
+        else
+            addOperator(front.operatorIndex);
     }else
         numberStack.push_back(tokens.front().number);
 
@@ -186,14 +205,22 @@ double expressionParser::solve(std::string_view string)
         auto& b = tokens[i];
 
         if(b.type == token::decimal){
-            if(a.getOperator().isRightUnary())
+            if(a.getOperator().isRightUnary() || a.isConstant())
                 addOperator(findOperator("*"));
 
             numberStack.push_back(b.number);
             continue;
         }
 
-        if(a.type == token::_operator)
+        if(b.isConstant()){
+            if(a.type == token::decimal || a.isConstant())
+                addOperator(findOperator("*"));
+
+            numberStack.push_back(b.getOperator().execute(0,0));
+            continue;
+        }
+
+        if(a.type == token::_operator && a.isConstant() == false)
         {
             if(a.getOperator().isRightUnary()){
                 if(b.getOperator().isLeftUnary())
@@ -201,7 +228,7 @@ double expressionParser::solve(std::string_view string)
             }
 
             else if(( b.operatorIndex == 2 || b.operatorIndex == 3)
-                   && a.getOperator().arity == _operator::binary )
+                   && a.getOperator().isRightUnary() == false )
                       b.operatorIndex -= 2;
 
             else if(b.getOperator().isLeftUnary() == false)
@@ -228,7 +255,10 @@ double expressionParser::solve(std::string_view string)
 
             //remove parenthesis open from stack
             operatorStack.pop_back();
-        }else
+        }else if(b.operatorIndex == findOperator("("))
+            operatorStack.push_back(findOperator("("));
+
+         else
             addOperator(b.operatorIndex);
     }
 

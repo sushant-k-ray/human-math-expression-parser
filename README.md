@@ -3,7 +3,7 @@
 ## About
 This project is a simple math expression parser which handles many cases where some operator is implicitly present. The included test.cpp is very handy in using this library
 
-*Note* : A C++ 20 compliant compiler is required to build the project
+*Note* : A C++ 17 compliant compiler is required to build the project
 
 ---
 ## Usage
@@ -17,7 +17,7 @@ and then execute
 ---
 ## Examples
 
-This library is space ignorant. However, spaces must not be used for function names.  
+This library is space and case insensitive. However, spaces must not be used for function names.
 For e.g. : `sin50` is valid, but `s in 50` is not
 
 | Expression | solve(Expression) |
@@ -26,6 +26,7 @@ For e.g. : `sin50` is valid, but `s in 50` is not
 | 25sin 3.1415 | 0.0 |
 | 4!5 | 120 |
 | sin 50(3.1415) | −0.8242 |
+| SiN PI | 0.0 |
 
 <sup><sub>sin 50(3.1415) is interpreted as 3.1415(sin 50)</sub></sup>
 
