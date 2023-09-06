@@ -231,9 +231,13 @@ double expressionParser::solve(std::string_view string)
                     addOperator(findOperator("*"));
             }
 
-            else if(( b.operatorIndex == 2 || b.operatorIndex == 3)
-                   && a.getOperator().isRightUnary() == false )
-                      b.operatorIndex -= 2;
+            else if( b.operatorIndex == 2 || b.operatorIndex == 3 ){
+                if(a.operatorIndex < 2)
+                    throw exception( "multiple consecutive operators"
+                                   , a.startLocation);
+
+                b.operatorIndex -= 2;
+            }
 
             else if(b.getOperator().isLeftUnary() == false)
                 throw exception( "multiple consecutive operators"
