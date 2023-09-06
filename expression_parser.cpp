@@ -92,16 +92,20 @@ void _Impl__::tokenise(std::string_view string, std::vector<token>& tokens)
                 return std::get<1>(i) < std::get<1>(j);
              });
 
-    for(int i = posOperators.size() - 1; i > 0; i--)
+    for(int i = 0; i < posOperators.size() - 1; i++)
     {
         auto& a = posOperators[i];
-        auto& b = posOperators[i - 1];
+        auto& b = posOperators[i + 1];
 
         if(std::get<1>(a) == std::get<1>(b))
-            posOperators.erase(posOperators.begin() + (i - 1));
+            posOperators.erase(posOperators.begin() + i--);
 
-        else if(std::get<1>(a) < std::get<2>(b))
-            throw exception("ambigous operator", std::get<1>(a));
+        else if(std::get<1>(b) < std::get<2>(a)){
+            if(std::get<2>(b) <= std::get<2>(a))
+                posOperators.erase(posOperators.begin() + (i + 1));
+            else
+                throw exception("ambigous operator", std::get<1>(b));
+        }
     }
 
     //tokenize the input
