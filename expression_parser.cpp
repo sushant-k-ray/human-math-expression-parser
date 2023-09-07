@@ -56,10 +56,10 @@ void _Impl__::tokenise(std::string_view string, std::vector<token>& tokens)
     std::vector<std::tuple<int, int, int>> posOperators;
 
     auto caseInsensitiveSearch = [&](std::string_view search, int index){
-        auto iter = std::search(std::execution::seq
-                               ,string.cbegin() + index, string.cend()
-                               ,search.cbegin(), search.cend()
-                               ,[](auto c1, auto c2)
+        auto iter = std::search(std::execution::seq,
+                                string.cbegin() + index, string.cend(),
+                                search.cbegin(), search.cend(),
+                                [](auto c1, auto c2)
                                 {return std::toupper(c1) == std::toupper(c2);}
                     );
 
@@ -186,12 +186,12 @@ double expressionParser::solve(std::string_view string)
         auto& frontOperator = front.getOperator();
 
         if(frontOperator.arity == _operator::binary)
-            throw exception( "binary operator at start of the string"
-                           , front.startLocation );
+            throw exception( "binary operator at start of the string",
+                             front.startLocation );
 
         if(frontOperator.isRightUnary())
-            throw exception( "operator at start without prior argument"
-                           , front.startLocation );
+            throw exception( "operator at start without prior argument",
+                             front.startLocation );
 
         if(front.operatorIndex == findOperator("("))
             parenthesisDepth = 1;
@@ -202,6 +202,12 @@ double expressionParser::solve(std::string_view string)
             addOperator(front.operatorIndex);
     }else
         numberStack.push_back(tokens.front().number);
+
+    if(tokens.back().type == token::_operator
+    && tokens.back().getOperator().isLeftUnary()
+    && tokens.back().isConstant() == false)
+        throw exception( "function at end without any argument",
+                         tokens.back().startLocation );
 
     for(int i = 1; i < tokens.size(); i++)
     {
@@ -233,15 +239,15 @@ double expressionParser::solve(std::string_view string)
 
             else if( b.operatorIndex == 2 || b.operatorIndex == 3 ){
                 if(a.operatorIndex < 2)
-                    throw exception( "multiple consecutive operators"
-                                   , a.startLocation);
+                    throw exception( "multiple consecutive operators",
+                                     a.startLocation);
 
                 b.operatorIndex -= 2;
             }
 
             else if(b.getOperator().isLeftUnary() == false)
-                throw exception( "multiple consecutive operators"
-                               , b.startLocation );
+                throw exception( "multiple consecutive operators",
+                                 b.startLocation );
         }
 
         else if(b.getOperator().isLeftUnary())
@@ -253,8 +259,8 @@ double expressionParser::solve(std::string_view string)
             parenthesisDepth -= 1;
 
             if(parenthesisDepth < 0)
-                throw exception( "parenthesis close without previous open"
-                               , b.startLocation );
+                throw exception( "parenthesis close without previous open",
+                                 b.startLocation );
 
             while(operatorStack.back() != findOperator("(")){
                 execute(operatorStack.back());
